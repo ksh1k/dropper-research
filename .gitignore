@@ -1,0 +1,19 @@
+# Build output
+x64/
+Debug/
+Release/
+
+# Compiled resources / payloads
+RCa08988
+RC*
+
+# VS clutter
+.vs/
+*.user
+*.suo
+
+# Malware samples
+samples/
+*.exe
+*.bin
+*.dll

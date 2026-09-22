@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="droppertest/droppertest.vcxproj" Id="74b1d199-38cc-4900-9062-2d6c4e88edb4" />
+</Solution>
