@@ -1,42 +1,42 @@
-\# Dropper
+# Dropper
 
 
 
-\## Version 1.0
+## Version 1.0
 
-\* Drops and launches plain executable files.
-
-
-
-\## Version 2.0
-
-\* Encodes payloads using XOR and/or Base64.
-
-\* Launches injected DLLs.
-
-\* Drops random-named files.
+* Drops and launches plain executable files.
 
 
 
-\## Version 3.0
+## Version 2.0
 
-\* Project converted to DLL.
+* Encodes payloads using XOR and/or Base64.
 
-\* Dead-imports converted into dead-exports.
+* Launches injected DLLs.
 
-\* Most static imports converted to dynamic imports.
+* Drops random-named files.
 
 
 
-\## Version 4.0
+## Version 3.0
 
-\* Three-IP scheme to distinguish analysis type.
+* Project converted to DLL.
 
-\* `PRIMARY\_IP`: plain string embedded in binary.
+* Dead-imports converted into dead-exports.
 
-\* `ENCODED\_IP`: obfuscated real connection, decoded at runtime via XOR.
+* Most static imports converted to dynamic imports.
 
-\* `ENCODED\_IP2`: obfuscated secondary endpoint, decoded at runtime via XOR, no connection.
 
-\* `automate.py` accepts `--ip1 --ip2 --ip3` to set all three IPs at compile time.
+
+## Version 4.0
+
+* Three-IP scheme to distinguish analysis type.
+
+* `PRIMARY_IP`: plain string embedded in binary.
+
+* `ENCODED_IP`: obfuscated real connection, decoded at runtime via XOR.
+
+* `ENCODED_IP2`: obfuscated secondary endpoint, decoded at runtime via XOR, no connection.
+
+* `automate.py` accepts `--ip1 --ip2 --ip3` to set all three IPs at compile time.
 
