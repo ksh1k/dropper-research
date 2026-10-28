@@ -1,0 +1,54 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\krv\\source\\repos\\Dropper\\bin.samples\\HelloDll\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{3B528D1F-D888-4F15-81A2-DF2E321CDA3C}|HelloDll\\HelloDll.vcxproj|C:\\Users\\krv\\source\\repos\\Dropper\\bin.samples\\HelloDll\\HelloDll\\HelloDll.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{3B528D1F-D888-4F15-81A2-DF2E321CDA3C}|HelloDll\\HelloDll.vcxproj|solutionrelative:HelloDll\\HelloDll.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B528D1F-D888-4F15-81A2-DF2E321CDA3C}|HelloDll\\HelloDll.vcxproj|C:\\Users\\krv\\source\\repos\\Dropper\\bin.samples\\HelloDll\\HelloDll\\HelloDll.def||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{3B528D1F-D888-4F15-81A2-DF2E321CDA3C}|HelloDll\\HelloDll.vcxproj|solutionrelative:HelloDll\\HelloDll.def||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "HelloDll.cpp",
+              "DocumentMoniker": "C:\\Users\\krv\\source\\repos\\Dropper\\bin.samples\\HelloDll\\HelloDll\\HelloDll.cpp",
+              "RelativeDocumentMoniker": "HelloDll\\HelloDll.cpp",
+              "ToolTip": "C:\\Users\\krv\\source\\repos\\Dropper\\bin.samples\\HelloDll\\HelloDll\\HelloDll.cpp",
+              "RelativeToolTip": "HelloDll\\HelloDll.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-10-28T17:43:46.879Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "HelloDll.def",
+              "DocumentMoniker": "C:\\Users\\krv\\source\\repos\\Dropper\\bin.samples\\HelloDll\\HelloDll\\HelloDll.def",
+              "RelativeDocumentMoniker": "HelloDll\\HelloDll.def",
+              "ToolTip": "C:\\Users\\krv\\source\\repos\\Dropper\\bin.samples\\HelloDll\\HelloDll\\HelloDll.def",
+              "RelativeToolTip": "HelloDll\\HelloDll.def",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAKAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001913|",
+              "WhenOpened": "2026-10-28T17:43:20.994Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

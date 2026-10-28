@@ -1,0 +1,3 @@
+LIBRARY HelloDll
+EXPORTS
+    run @1
